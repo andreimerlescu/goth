@@ -10,8 +10,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/markbates/going/defaults"
 	"github.com/andreimerlescu/goth"
+	"github.com/markbates/going/defaults"
 	"golang.org/x/oauth2"
 )
 
