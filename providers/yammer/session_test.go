@@ -3,8 +3,8 @@ package yammer_test
 import (
 	"testing"
 
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/providers/yammer"
+	"github.com/andreimerlescu/goth"
+	"github.com/andreimerlescu/goth/providers/yammer"
 	"github.com/stretchr/testify/assert"
 )
 

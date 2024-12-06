@@ -3,8 +3,8 @@ package cloudfoundry_test
 import (
 	"testing"
 
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/providers/cloudfoundry"
+	"github.com/andreimerlescu/goth"
+	"github.com/andreimerlescu/goth/providers/cloudfoundry"
 	"github.com/stretchr/testify/assert"
 )
 

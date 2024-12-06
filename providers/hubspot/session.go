@@ -3,7 +3,7 @@ package hubspot
 import (
 	"encoding/json"
 	"errors"
-	"github.com/markbates/goth"
+	"github.com/andreimerlescu/goth"
 	"strings"
 )
 

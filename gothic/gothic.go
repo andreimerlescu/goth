@@ -22,10 +22,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andreimerlescu/goth"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/markbates/goth"
 )
 
 type contextKey string

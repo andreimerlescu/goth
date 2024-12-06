@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/markbates/goth"
+	"github.com/andreimerlescu/goth"
 	"github.com/mrjones/oauth"
 )
 
