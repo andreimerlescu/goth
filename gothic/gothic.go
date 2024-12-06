@@ -15,14 +15,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	checkfs "github.com/andreimerlescu/go-checkfs"
-	"github.com/andreimerlescu/go-checkfs/directory"
-	gopasswd "github.com/andreimerlescu/go-passwd"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/mux"
@@ -30,34 +28,27 @@ import (
 	"github.com/markbates/goth"
 )
 
-// SessionName is the key used to access the session store.
-var SessionName = "_gothic_session"
+type contextKey string
 
-// Store can/should be set by applications using gothic. The default is a cookie store.
-var Store sessions.Store
-var defaultStore sessions.Store
+var (
+	keySet       = false
+	SessionName  = "_gothic_session"
+	defaultStore sessions.Store
+	Store        sessions.Store
 
-var keySet = false
+	ErrSessionNotFound    = errors.New("could not find a matching session for this request")
+	ErrProviderRequired   = errors.New("you must select a provider")
+	ErrStateTokenMismatch = errors.New("state token mismatch")
+	ErrContextTimeout     = errors.New("operation timed out")
+	ErrContextCanceled    = errors.New("operation was canceled")
 
-type key int
+	timeoutKey     contextKey = "timeout"
+	providerKey    contextKey = "provider"
+	defaultTimeout            = 30 * time.Second
+)
 
 // ProviderParamKey can be used as a key in context when passing in a provider
-const ProviderParamKey key = iota
-
-func checkKey(key []byte) error {
-	result := gopasswd.Audit(string(key), gopasswd.Options{
-		MaxLength:  32,
-		MinLength:  8,
-		UseDigits:  true,
-		UseUpper:   true,
-		UseLower:   true,
-		UseSymbols: false,
-	})
-	if result.Err != nil {
-		return result.Err
-	}
-	return nil
-}
+const ProviderParamKey int = iota
 
 func init() {
 	if len(os.Getenv("SESSION_SECRET")) > 0 {
@@ -68,9 +59,6 @@ func init() {
 // UseCookies assigns the sessions.Store to sessions.NewCookieStore using your provided key.
 // You supply a pointer to the session.Options into gothic.
 func UseCookies(key []byte, opts *sessions.Options) error {
-	if err := checkKey(key); err != nil {
-		return err
-	}
 	cookieStore := sessions.NewCookieStore(key)
 	cookieStore.Options = opts
 	Store = cookieStore
@@ -81,13 +69,6 @@ func UseCookies(key []byte, opts *sessions.Options) error {
 // UseFilesystem assigns the sessions.Store to sessions.NewFilesystemStore using your path and
 // provided key. You supply a pointer to your sessions.Options into gothic.
 func UseFilesystem(path string, key []byte, opts *sessions.Options) error {
-	dirErr := checkfs.Directory(path, directory.Options{RequireWrite: true})
-	if dirErr != nil {
-		return dirErr
-	}
-	if err := checkKey(key); err != nil {
-		return err
-	}
 	fsStore := sessions.NewFilesystemStore(path, key)
 	fsStore.Options = opts
 	Store = fsStore
@@ -106,14 +87,14 @@ for the requested provider.
 See https://github.com/markbates/goth/blob/master/examples/main.go to see this in action.
 */
 func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
-	url, err := GetAuthURL(res, req)
+	authURL, err := GetAuthURL(res, req)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(res, err)
+		_, _ = fmt.Fprintln(res, err)
 		return
 	}
 
-	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
+	http.Redirect(res, req, authURL, http.StatusTemporaryRedirect)
 }
 
 // SetState sets the state string associated with the given request.
@@ -179,7 +160,7 @@ func GetAuthURL(res http.ResponseWriter, req *http.Request) (string, error) {
 		return "", err
 	}
 
-	url, err := sess.GetAuthURL()
+	authURL, err := sess.GetAuthURL()
 	if err != nil {
 		return "", err
 	}
@@ -190,7 +171,7 @@ func GetAuthURL(res http.ResponseWriter, req *http.Request) (string, error) {
 		return "", err
 	}
 
-	return url, err
+	return authURL, err
 }
 
 /*
@@ -240,7 +221,10 @@ var CompleteUserAuth = func(res http.ResponseWriter, req *http.Request) (goth.Us
 
 	params := req.URL.Query()
 	if params.Encode() == "" && req.Method == "POST" {
-		req.ParseForm()
+		err := req.ParseForm()
+		if err != nil {
+			return goth.User{}, err
+		}
 		params = req.Form
 	}
 
@@ -390,7 +374,12 @@ func getSessionValue(session *sessions.Session, key string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create gzip reader: %w", err)
 	}
-	defer r.Close()
+	defer func(r *gzip.Reader) {
+		err := r.Close()
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "getSessionValue threw gzip.Reader .Close() err: %v", err)
+		}
+	}(r)
 
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r); err != nil {
