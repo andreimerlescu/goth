@@ -10,8 +10,10 @@ This package was inspired by [https://github.com/intridea/omniauth](https://gith
 
 ## Installation
 
+This is a fork off from github.com/markbates/goth
+
 ```text
-$ go get github.com/markbates/goth
+$ go get github.com/andreimerlescu/goth
 ```
 
 ## Supported Providers
@@ -89,11 +91,11 @@ through Twitter, Facebook, Google Plus etc.
 To run the example either clone the source from GitHub
 
 ```text
-$ git clone git@github.com:markbates/goth.git
+$ git clone git@github.com:andreimerlescu/goth.git
 ```
 or use
 ```text
-$ go get github.com/markbates/goth
+$ go get github.com/andriemerlescu/goth
 ```
 ```text
 $ cd goth/examples
