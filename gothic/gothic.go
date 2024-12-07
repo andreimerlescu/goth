@@ -52,7 +52,10 @@ const ProviderParamKey int = iota
 
 func init() {
 	if len(os.Getenv("SESSION_SECRET")) > 0 {
-		_ = UseCookies([]byte(os.Getenv("SESSION_SECRET")), &sessions.Options{HttpOnly: true})
+		err := UseCookies([]byte(os.Getenv("SESSION_SECRET")), &sessions.Options{HttpOnly: true})
+		if err != nil {
+			keySet = true
+		}
 	}
 }
 
@@ -63,6 +66,7 @@ func UseCookies(key []byte, opts *sessions.Options) error {
 	cookieStore.Options = opts
 	Store = cookieStore
 	defaultStore = Store
+	keySet = true
 	return nil
 }
 
@@ -73,6 +77,7 @@ func UseFilesystem(path string, key []byte, opts *sessions.Options) error {
 	fsStore.Options = opts
 	Store = fsStore
 	defaultStore = Store
+	keySet = true
 	return nil
 }
 
@@ -325,6 +330,9 @@ func getProviderName(req *http.Request) (string, error) {
 	session, _ := Store.Get(req, SessionName)
 	for _, provider := range providers {
 		p := provider.Name()
+		if session.Values == nil {
+			session.Values = make(map[interface{}]interface{})
+		}
 		value := session.Values[p]
 		if _, ok := value.(string); ok {
 			return p, nil
@@ -343,6 +351,9 @@ func GetContextWithProvider(req *http.Request, provider string) *http.Request {
 // StoreInSession stores a specified key/value pair in the session.
 func StoreInSession(key string, value string, req *http.Request, res http.ResponseWriter) error {
 	session, _ := Store.New(req, SessionName)
+	if session.Values == nil {
+		session.Values = make(map[interface{}]interface{})
+	}
 
 	if err := updateSessionValue(session, key, value); err != nil {
 		return err
@@ -398,7 +409,9 @@ func updateSessionValue(session *sessions.Session, key, value string) error {
 	if err := gz.Close(); err != nil {
 		return fmt.Errorf("failed to close gzip writer: %w", err)
 	}
-
+	if session.Values == nil {
+		session.Values = make(map[interface{}]interface{})
+	}
 	session.Values[key] = b.String()
 	return nil
 }
