@@ -72,8 +72,8 @@ func UseCookies(key []byte, opts *sessions.Options) error {
 
 // UseFilesystem assigns the sessions.Store to sessions.NewFilesystemStore using your path and
 // provided key. You supply a pointer to your sessions.Options into gothic.
-func UseFilesystem(path string, key []byte, opts *sessions.Options) error {
-	fsStore := sessions.NewFilesystemStore(path, key)
+func UseFilesystem(path string, authKey, encryptionKey []byte, opts *sessions.Options) error {
+	fsStore := sessions.NewFilesystemStore(path, authKey, encryptionKey)
 	fsStore.Options = opts
 	Store = fsStore
 	defaultStore = Store
