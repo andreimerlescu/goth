@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/gorilla/securecookie"
 	"io"
 	"net/http"
 	"net/url"
@@ -72,9 +73,13 @@ func UseCookies(key []byte, opts *sessions.Options) error {
 
 // UseFilesystem assigns the sessions.Store to sessions.NewFilesystemStore using your path and
 // provided key. You supply a pointer to your sessions.Options into gothic.
-func UseFilesystem(path string, authKey, encryptionKey []byte, opts *sessions.Options) error {
+func UseFilesystem(path string, authKey, encryptionKey []byte, maxLength int, opts *sessions.Options) error {
+	codec := securecookie.New(authKey, encryptionKey)
 	fsStore := sessions.NewFilesystemStore(path, authKey, encryptionKey)
 	fsStore.Options = opts
+	fsStore.Codecs = []securecookie.Codec{codec}
+	fsStore.MaxLength(maxLength)
+	fsStore.MaxAge(opts.MaxAge)
 	Store = fsStore
 	defaultStore = Store
 	keySet = true
